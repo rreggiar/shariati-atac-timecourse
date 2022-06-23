@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Roman Reggiardo <rreggiar@ucsc.edu>
-# 2022_01_12
+# 2022_07_23
 # see https://github.com/rreggiar/bioconductor_docker
 # ssh: git@github.com:rreggiar/bioconductor_docker.git
 
