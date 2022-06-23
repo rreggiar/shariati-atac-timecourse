@@ -1,0 +1,67 @@
+---
+title: "atac timecourse analysis"
+date: "`r Sys.Date()`"
+author: 'Roman E. Reggiardo'
+output: html_document
+editor_options: 
+  chunk_output_type: console
+---
+# nb_setup
+```{r, setup, include=FALSE}
+knitr::opts_chunk$set(fig.width = 8, collapse = T)
+knitr::opts_chunk$set(message = F)
+# here::set_here('/home/rreggiar/')
+here::here()
+suppressPackageStartupMessages(library(tidyverse))
+```
+
+```{r}
+peak_colnames <- c('peak_id', 'chr', 'start', 'end',
+                   'strand', 'score', 'focus', 'anno',
+                   'detail', 'distance_tss', 'nearest_prom',
+                   'entrez_id', 'nearest_unigene', 'nearest_refseq',
+                   'nearest_ensg', 'gene_name', 'gene_alias', 
+                   'gene_desc', 'biotype')
+
+data_dirs <- list.dirs(here::here('data'), recursive = F)
+
+data_agg <- 
+  lapply(data_dirs, function(dir) { 
+  
+    dir_name <- basename(dir)
+    
+    lfc4_colnames <- c('peak_id', 'chr', 'start', 'end',
+                     'strand', 'score', 'focus', 
+                     'tot_tags', 'bg_tags', dir_name, 'pval')
+    
+    peak <- 
+      vroom::vroom(
+        list.files(dir, 
+                   pattern = '.peak',
+                   full.names = T), col_names = peak_colnames
+      )
+    
+    lfc4 <- 
+    vroom::vroom(
+      list.files(dir, 
+                 pattern = 'LFC4',
+                 full.names = T), col_names = lfc4_colnames
+      )
+    
+
+    peak_lfc4 <- merge(peak, lfc4, by = c('peak_id', 'chr', 
+                                            'start', 'end', 
+                                            'strand'))
+    if (nrow(peak_lfc4) != 0) {
+          return(peak_lfc4)
+    }
+   }
+)
+
+data_agg_filt <- data_agg[!sapply(data_agg, is.null)]
+
+data_agg_filt
+
+
+```
+
