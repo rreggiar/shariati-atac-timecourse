@@ -16,15 +16,16 @@ suppressPackageStartupMessages(library(tidyverse))
 ```
 
 ```{r}
+# these are hard-coded since the data files are all the same
 peak_colnames <- c('peak_id', 'chr', 'start', 'end',
                    'strand', 'score', 'focus', 'anno',
                    'detail', 'distance_tss', 'nearest_prom',
                    'entrez_id', 'nearest_unigene', 'nearest_refseq',
                    'nearest_ensg', 'gene_name', 'gene_alias', 
                    'gene_desc', 'biotype')
-
+# grab all the output directories
 data_dirs <- list.dirs(here::here('data'), recursive = F)
-
+# aggregate the output data w/in dirs to a list of DFs
 data_agg <- 
   lapply(data_dirs, function(dir) { 
   
@@ -32,7 +33,7 @@ data_agg <-
     
     lfc4_colnames <- c('peak_id', 'chr', 'start', 'end',
                      'strand', 'score', 'focus', 
-                     'tot_tags', 'bg_tags', dir_name, 'pval')
+                     'tot_tags', 'bg_tags', 'foldChange', 'pval')
     
     peak <- 
       vroom::vroom(
@@ -48,19 +49,23 @@ data_agg <-
                  full.names = T), col_names = lfc4_colnames
       )
     
+    # add identifying column and calculate log2FC
+    lfc4$foldChange <- as.numeric(lfc4$foldChange)
+    lfc4$comparison <- dir_name
+    lfc4$log2FoldChange <- log2(lfc4$foldChange)
+    
 
     peak_lfc4 <- merge(peak, lfc4, by = c('peak_id', 'chr', 
                                             'start', 'end', 
                                             'strand'))
-    if (nrow(peak_lfc4) != 0) {
-          return(peak_lfc4)
-    }
+    return(peak_lfc4)
+
    }
 )
-
+# remove NULL entries (AvA comparisons)
 data_agg_filt <- data_agg[!sapply(data_agg, is.null)]
 
-data_agg_filt
+atac_data <- do.call('rbind', data_agg_filt)
 
 
 ```
