@@ -64,9 +64,23 @@ data_agg <-
 )
 # remove NULL entries (AvA comparisons)
 data_agg_filt <- data_agg[!sapply(data_agg, is.null)]
-
+# bind results into single data frame
 atac_data <- do.call('rbind', data_agg_filt)
 
+atac_tidy <- 
+  atac_data %>% 
+    mutate(enriched_in = str_split_fixed(comparison, pattern = '.vs.', n = 3)[,1],
+           compared_to = str_split_fixed(comparison, pattern = '.vs.', n = 3)[,2]) %>% 
+    mutate(enriched_time = gsub(str_split_fixed(enriched_in, pattern = '_', n = 2)[,2], 
+                                pattern = 'hr', replacement = ''),
+           compared_time = gsub(str_split_fixed(compared_to, pattern = '_', n = 2)[,2], 
+                                pattern = 'hr', replacement = '')) %>% 
+    mutate(enriched_context = str_split_fixed(enriched_in, pattern = '_', n = 2)[,1],
+           compared_context = str_split_fixed(compared_to, pattern = '_', n = 2)[,1])
+```
+
+```{r}
 
 ```
+
 
