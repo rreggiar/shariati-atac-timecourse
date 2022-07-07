@@ -182,7 +182,7 @@ atac_tidy %>%
 ```
 
 ### fraction of significantly enriched peaks from each biotype
-```{r, echo=FALSE}
+```{r, echo=FALSE, warning=FALSE}
 atac_tidy %>% 
   group_by(enriched_time, enriched_context, compared_context, biotype) %>% 
   filter(compared_time == '0',
