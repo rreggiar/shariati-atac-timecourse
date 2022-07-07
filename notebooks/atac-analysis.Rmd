@@ -1,21 +1,23 @@
 ---
 title: "atac timecourse analysis"
+author: "Roman E. Reggiardo"
 date: "`r Sys.Date()`"
-author: 'Roman E. Reggiardo'
-output: html_document
-editor_options: 
+output:
+  html_document: 
+    code_folding: hide
+editor_options:
   chunk_output_type: console
 ---
 # nb_setup
 ```{r, setup, include=FALSE}
-knitr::opts_chunk$set(fig.width = 8, collapse = T)
+knitr::opts_chunk$set(fig.width = 10, collapse = T)
 knitr::opts_chunk$set(message = F)
 # here::set_here('/home/rreggiar/')
 here::here()
 suppressPackageStartupMessages(library(tidyverse))
 ```
 # ggplot theme
-```{r}
+```{r, include=FALSE}
 library(ggplot2)
 library(ggthemes)
 base_size = 10
@@ -46,7 +48,7 @@ ggplot2::theme_set(ggthemes::theme_foundation(base_size = base_size,
                            axis.ticks.length.y = NULL, axis.ticks.length.y.left = NULL, 
                            axis.ticks.length.y.right = NULL,
                            strip.text = element_text(size = rel(0.8), face = 'bold'),
-                           strip.background = element_blank(),
+                           strip.background = element_rect(size = 0.2),
                            legend.key.size= unit(0.08, "in"),
                            legend.spacing = unit(0, "in"),
                            legend.key = element_rect(colour = NA),
@@ -71,7 +73,7 @@ txt.mm_to_pts <- function(ratio){ base_size * ratio * (25.4 / 72.27) }
 
 # Data
 ## load and parse
-```{r}
+```{r, include=FALSE}
 # these are hard-coded since the data files are all the same
 peak_colnames <- c('peak_id', 'chr', 'start', 'end',
                    'strand', 'score', 'focus', 'anno',
@@ -127,7 +129,7 @@ atac_data <- do.call('rbind', data_agg_filt)
 
 # Feature engineering
 ## parse out useful variables
-```{r}
+```{r, include=FALSE}
 # make some columns to enable numeric comparisons of time, categorical of context
 atac_tidy <- 
   atac_data %>% 
@@ -140,23 +142,125 @@ atac_tidy <-
     mutate(enriched_context = str_split_fixed(enriched_in, pattern = '_', n = 2)[,1],
            compared_context = str_split_fixed(compared_to, pattern = '_', n = 2)[,1])
 ```
-##
-```{r}
 
+## consensus peak list
+```{r, include=FALSE}
+
+### doesn't work
+atac_tidy %>% 
+  filter(compared_time == '0',
+         enriched_time != '24') %>% 
+  filter(enriched_context == 'Hi') %>% 
+  mutate(comparison = paste0(enriched_context, ' vs ', compared_context, '_', enriched_time)) %>% 
+  select(peak_id, tot_tags, comparison) %>% 
+  pivot_wider(values_from = tot_tags, names_from = comparison) %>% 
+  drop_na()
+
+  
 ```
 
 # Data viz
-## time course
-```{r}
+This is a preliminary analysis that has a lot more room for growth and potential both content-wise and in terms of aesthetics. More of a survey of the major events and trends I can find quickly -- I have been really swamped lately and have more time now and in the coming weeks to work on the data. In all the analysis below, I've removed the 24hr time points. I'll keep digging through this next week, let me know if you have any requests, questions, or ideas. Code is hidden for ease of viewing.  
+
+## biotype time course
+Over time, how many significantly enriched peaks are detected in each comparison, at each time point compared to T==0, colored by biotype.  
+
+### number of significantly enriched peaks by biotype
+```{r, echo=FALSE, warning=FALSE}
 atac_tidy %>% 
   group_by(enriched_time, enriched_context, compared_context, biotype) %>% 
-  summarize(count = n()) %>% 
+  filter(compared_time == '0',
+         enriched_time != '24') %>% 
+  summarize(count = n()) %>%
+  mutate(comparison = paste0(enriched_context, ' vs ', compared_context)) %>% 
   ggplot(aes(enriched_time, count, color = biotype, group = biotype)) + 
   geom_line(alpha = 0.4) +
   geom_point(size = 2) +
-  ylab('# enriched peaks') + xlab('time') +
-  facet_wrap(~enriched_context+compared_context, ncol = 2)
+  ylab('# sig. enriched peaks') + xlab('time') +
+  facet_wrap(~comparison, ncol = 2, scales = 'free_x') +
+  scale_color_brewer(palette = 'Dark2')
+```
 
+### fraction of significantly enriched peaks from each biotype
+```{r, echo=FALSE}
+atac_tidy %>% 
+  group_by(enriched_time, enriched_context, compared_context, biotype) %>% 
+  filter(compared_time == '0',
+         enriched_time != '24') %>% 
+  summarize(count = n()) %>%
+  group_by(enriched_time, enriched_context, compared_context) %>% 
+  mutate(frac = count/sum(count)) %>% 
+  mutate(comparison = paste0(enriched_context, ' vs ', compared_context)) %>% 
+  ggplot(aes(enriched_time, frac, color = biotype, group = biotype)) + 
+  geom_line(alpha = 0.4) +
+  geom_point(size = 2) +
+  ylab('fraction of sig. enriched peaks') + xlab('time') +
+  facet_wrap(~comparison, ncol = 2, scales = 'free_x') +
+  scale_color_brewer(palette = 'Dark2')
+```
 
+## annotation time course
+Same as above but instead of biotypes we're looking at the genomic annotations.  
+
+### number of significantly enriched peaks by annotation
+```{r, echo=FALSE}
+atac_tidy %>% 
+  mutate(anno = str_split_fixed(anno, ' \\(', n = 2)[,1]) %>% 
+  group_by(enriched_time, enriched_context, compared_context, anno) %>% 
+  filter(compared_time == '0',
+         enriched_time != '24') %>% 
+  summarize(count = n()) %>% 
+  mutate(comparison = paste0(enriched_context, ' vs ', compared_context)) %>% 
+  ggplot(aes(enriched_time, count, color = anno, group = anno)) + 
+  geom_line(alpha = 0.4) +
+  geom_point(size = 2) +
+  ylab('# sig. enriched peaks') + xlab('time') +
+  facet_wrap(~comparison, ncol = 2, scales = 'free_x') + 
+  scale_color_brewer(palette = 'Dark2')
+```
+
+### fraction of significantly enriched peaks from each annotation
+```{r, echo=FALSE}
+atac_tidy %>% 
+  mutate(anno = str_split_fixed(anno, ' \\(', n = 2)[,1]) %>% 
+  group_by(enriched_time, enriched_context, compared_context, anno) %>% 
+  filter(compared_time == '0',
+         enriched_time != '24') %>% 
+  summarize(count = n()) %>% 
+  group_by(enriched_time, enriched_context, compared_context) %>% 
+  mutate(frac = count/sum(count)) %>% 
+  mutate(comparison = paste0(enriched_context, ' vs ', compared_context)) %>% 
+  ggplot(aes(enriched_time, frac, color = anno, group = anno)) + 
+  geom_line(alpha = 0.4) +
+  geom_point(size = 2) +
+  ylab('fraction of sig. enriched peaks') + xlab('time') +
+  facet_wrap(~comparison, ncol = 2, scales = 'free_x') + 
+  scale_color_brewer(palette = 'Dark2')
+```
+
+## individual peaks over time
+Here I'm taking the peaks (and labeling with their associated gene) that only show up in all 4 time points for each comparison and plotting their log2Foldchange as a function of time. I think this can be expanded to characterize these 20 peaks/genes as consistent, burst, or linear/logistic responders.  
+
+```{r, echo=FALSE}
+atac_tidy %>% 
+  filter(compared_time == '0',
+         enriched_time != '24') %>% 
+  mutate(comparison = paste0(enriched_context, ' vs ', compared_context)) %>% 
+  dplyr::group_by(peak_id, comparison) %>%
+  dplyr::summarise(n = dplyr::n(), .groups = "drop") %>%
+  dplyr::filter(n == 4L) -> consistent_peak_list 
+
+atac_tidy %>% 
+  mutate(anno = str_split_fixed(anno, ' \\(', n = 2)[,1]) %>% 
+  filter(compared_time == '0',
+         enriched_time != '24') %>% 
+  mutate(comparison = paste0(enriched_context, ' vs ', compared_context)) %>% 
+  merge(consistent_peak_list, by = c('peak_id', 'comparison')) %>% 
+  ggplot(aes(enriched_time, log2FoldChange, group = peak_id, color = anno)) +
+  geom_line(alpha = 0.4) + 
+  geom_point(size = 2) + 
+  facet_wrap(~gene_name+comparison, scales = 'free_x') + 
+  scale_color_brewer(palette = 'Dark2') +
+  theme(legend.position = 'bottom')
 ```
 
