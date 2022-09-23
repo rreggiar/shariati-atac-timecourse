@@ -143,21 +143,6 @@ atac_tidy <-
            compared_context = str_split_fixed(compared_to, pattern = '_', n = 2)[,1])
 ```
 
-## consensus peak list
-```{r, include=FALSE}
-
-### doesn't work
-atac_tidy %>% 
-  filter(compared_time == '0',
-         enriched_time != '24') %>% 
-  filter(enriched_context == 'Hi') %>% 
-  mutate(comparison = paste0(enriched_context, ' vs ', compared_context, '_', enriched_time)) %>% 
-  select(peak_id, tot_tags, comparison) %>% 
-  pivot_wider(values_from = tot_tags, names_from = comparison) %>% 
-  drop_na()
-
-  
-```
 
 # Data viz
 This is a preliminary analysis that has a lot more room for growth and potential both content-wise and in terms of aesthetics. More of a survey of the major events and trends I can find quickly -- I have been really swamped lately and have more time now and in the coming weeks to work on the data. In all the analysis below, I've removed the 24hr time points. I'll keep digging through this next week, let me know if you have any requests, questions, or ideas. Code is hidden for ease of viewing.  
@@ -264,3 +249,23 @@ atac_tidy %>%
   theme(legend.position = 'bottom')
 ```
 
+# Clustering with ATAC signal
+Going to try normalizing the alignments and using the resulting cpm at called peaks to cluster, should provide more signal than the diff accessibility data
+
+## consensus peak list
+```{r, include=FALSE}
+
+### doesn't work because we end up with ~~no overlap/consensus
+atac_tidy %>% 
+  filter(compared_time == '0',
+         enriched_time != '24') %>% 
+  filter(enriched_context == 'Hi', compared_context == 'Hi') %>% 
+  mutate(comparison = paste0(enriched_context, ' vs ', compared_context, '_', enriched_time)) %>% 
+  select(peak_id, log2FoldChange, comparison) %>% 
+  pivot_wider(values_from = log2FoldChange, names_from = comparison) %>% 
+  drop_na()
+
+  
+```
+
+## called peaks
